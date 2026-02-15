@@ -22,4 +22,15 @@ def track_connections():
         connection2pid[( local_port , remote_port )]=con_pid    
         connection2pid[( remote_port , local_port )]=con_pid
 
+def process_packet(packet):
+    try :
+        source_port = packet.sport
+        dest_port = packet.dport
+        src_mac = packet.src
+    except Exception:
+        return
+    if ((source_port , dest_port) in connection2pid.keys()) and (src_mac not in get_all_network_adapter_macs()):
+        pid = connection2pid[(source_port , dest_port)]
+        pid2traffic[pid]+=len(packet)
 
+    
