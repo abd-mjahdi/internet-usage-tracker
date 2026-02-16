@@ -131,13 +131,13 @@ def show_stats():
 
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "--tray":
-        from tray_app import run_tray
-        run_tray()
-    else:
+    if len(sys.argv) > 1 and sys.argv[1] == "--console":
         print("Ethernet usage tracker. Press Enter to start...")
         input()
-        run_tracker(console=True)                              
+        run_tracker(console=True)
+    else:
+        from tray_app import run_tray
+        run_tray()                              
 
 
        
