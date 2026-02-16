@@ -61,12 +61,12 @@ def on_packet(packet):
     pid_to_bytes[pid] += len(packet)
 
 def format_size(size):
-    for t in ['','K','M','G'] :
-        if size>1024:
-            size = float(size/1024)
-        else:
-            break
-    return f"{size}{t}B/s" 
+    for t in ['', 'K', 'M', 'G', 'T']:
+        if size < 1024:
+            return f"{size:.2f}{t}B/s"
+        size /= 1024
+    return f"{size:.2f}PB/s"
+
 
 
 def show_stats():
