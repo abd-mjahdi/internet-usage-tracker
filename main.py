@@ -16,6 +16,12 @@ pid_to_bytes = defaultdict(int)
 # Previous total per pid (to show speed)
 prev_bytes = {}
 
+# For tray: start/stop tracking
+tracking_active = False
+stop_sniff = False
+# If False, show_stats() only updates prev_bytes (no cls/print)
+console_mode = True
+
 
 def get_our_macs():
     return {iface.mac for iface in ifaces.values()}
@@ -25,7 +31,8 @@ OUR_MACS = get_our_macs()
 
 def update_connections():
     """Learn which ports belong to which process."""
-    while True:
+    global tracking_active
+    while tracking_active:
         time.sleep(1)
         for con in psutil.net_connections():
             try:
@@ -68,11 +75,43 @@ def format_size(size):
     return f"{size:.2f}PB/s"
 
 
+def get_current_stats():
+    """Return list of (process_name, speed_bytes_per_sec) for tray/UI."""
+    global prev_bytes
+    rows = []
+    for pid, total in pid_to_bytes.items():
+        try:
+            name = psutil.Process(pid).name()
+        except psutil.NoSuchProcess:
+            continue
+        speed = total - prev_bytes.get(pid, 0)
+        rows.append((name, speed))
+    rows.sort(key=lambda x: x[1], reverse=True)
+    return rows
+
+
+def run_tracker(console=True):
+    """Start tracking (blocking until stop_tracker is called). Used by tray or console."""
+    global tracking_active, stop_sniff, console_mode
+    tracking_active = True
+    stop_sniff = False
+    console_mode = console
+    Thread(target=update_connections, daemon=True).start()
+    Thread(target=show_stats, daemon=True).start()
+    sniff(prn=on_packet, store=False, filter="tcp or udp", stop_filter=lambda _: stop_sniff)
+
+
+def stop_tracker():
+    """Stop tracking. Returns after sniff and loops have stopped."""
+    global tracking_active, stop_sniff
+    tracking_active = False
+    stop_sniff = True
+
 
 def show_stats():
     """Print each process and its download speed once per second."""
-    global prev_bytes
-    while True:
+    global prev_bytes, tracking_active
+    while tracking_active:
         time.sleep(1)
         rows = []
         for pid, total in pid_to_bytes.items():
@@ -84,20 +123,21 @@ def show_stats():
             prev_bytes[pid] = total
             rows.append((name, speed))
         rows.sort(key=lambda x: x[1], reverse=True)
-        os.system("cls")
-        for name, speed in rows:
-            #print(f"{name}: {speed} bytes/s")
-            print(f"{name}: {format_size(speed)}")
+        if console_mode:
+            os.system("cls")
+            for name, speed in rows:
+                print(f"{name}: {format_size(speed)}")
 
 
 if __name__ == "__main__":
-    print("Ethernet usage tracker. Press Enter to start...")
-    input()
-
-    Thread(target=update_connections, daemon=True).start()
-    Thread(target=show_stats, daemon=True).start()
-
-    sniff(prn=on_packet, store=False, filter="tcp or udp")                              
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--tray":
+        from tray_app import run_tray
+        run_tray()
+    else:
+        print("Ethernet usage tracker. Press Enter to start...")
+        input()
+        run_tracker(console=True)                              
 
 
        
