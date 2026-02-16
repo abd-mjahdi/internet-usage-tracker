@@ -60,6 +60,14 @@ def on_packet(packet):
     pid = connection_to_pid[key]
     pid_to_bytes[pid] += len(packet)
 
+def format_size(size):
+    for t in ['','K','M','G'] :
+        if size>1024:
+            size = float(size/1024)
+        else:
+            break
+    return f"{size}{t}B/s" 
+
 
 def show_stats():
     """Print each process and its download speed once per second."""
@@ -78,7 +86,8 @@ def show_stats():
         rows.sort(key=lambda x: x[1], reverse=True)
         os.system("cls")
         for name, speed in rows:
-            print(f"{name}: {speed} bytes/s")
+            #print(f"{name}: {speed} bytes/s")
+            print(f"{name}: {format_size(speed)}")
 
 
 if __name__ == "__main__":
@@ -88,4 +97,7 @@ if __name__ == "__main__":
     Thread(target=update_connections, daemon=True).start()
     Thread(target=show_stats, daemon=True).start()
 
-    sniff(prn=on_packet, store=False, filter="tcp or udp")
+    sniff(prn=on_packet, store=False, filter="tcp or udp")                              
+
+
+       
